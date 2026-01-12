@@ -22,6 +22,22 @@ def main():
     project_root = Path(__file__).parent
     os.chdir(project_root)
 
+    # Check if the built executable is running
+    exe_name = "VentivToRiskonnectMigrationTool.exe"
+    try:
+        result = subprocess.run(
+            ['tasklist', '/FI', f'IMAGENAME eq {exe_name}'],
+            capture_output=True,
+            text=True
+        )
+        if exe_name in result.stdout:
+            print(f"[!] WARNING: {exe_name} is currently running!")
+            print("[!] Please close the application before building.")
+            print("[!] Press Ctrl+C to cancel, or Enter to continue anyway...")
+            input()
+    except Exception:
+        pass  # Not critical if this check fails
+
     # Check if PyInstaller is installed
     try:
         import PyInstaller
@@ -37,8 +53,18 @@ def main():
     for dir_name in dirs_to_clean:
         dir_path = project_root / dir_name
         if dir_path.exists():
-            shutil.rmtree(dir_path)
-            print(f"[OK] Removed {dir_name}/")
+            try:
+                shutil.rmtree(dir_path)
+                print(f"[OK] Removed {dir_name}/")
+            except PermissionError as e:
+                print(f"[!] Warning: Could not remove {dir_name}/ - {e}")
+                print(f"[!] Retrying with force delete...")
+                # On Windows, try using system command as fallback
+                if sys.platform == "win32":
+                    os.system(f'rmdir /s /q "{dir_path}"')
+                else:
+                    os.system(f'rm -rf "{dir_path}"')
+                print(f"[OK] Removed {dir_name}/ (forced)")
 
     # Run PyInstaller
     print("\nBuilding executable...")
