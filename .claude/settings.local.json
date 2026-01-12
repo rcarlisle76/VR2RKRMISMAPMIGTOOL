@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m src.main:*)",
+      "Bash(powershell -Command \"\\(Get-ChildItem ''dist\\\\VentivToRiskonnectMigrationTool'' -Recurse | Measure-Object -Property Length -Sum\\).Sum / 1MB\")",
+      "Bash(dir /B \"dist\\\\VentivToRiskonnectMigrationTool\")",
+      "Bash(findstr:*)",
+      "Bash(.VentivToRiskonnectMigrationTool.exe)",
+      "Bash(timeout 5 ping:*)",
+      "Bash(\"dist\\\\VentivToRiskonnectMigrationTool\\\\VentivToRiskonnectMigrationTool.exe\")",
+      "Bash(timeout:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

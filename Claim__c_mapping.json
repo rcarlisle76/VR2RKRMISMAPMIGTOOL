@@ -1,0 +1,128 @@
+{
+  "id": "5b64178b-6b52-4a1c-ba64-fbb7ea29ca5c",
+  "name": "Claim Mapping",
+  "description": "Field mapping for C:/Users/robert.carlisle/Desktop/migration mapping tool and data loader/Claim__c_Template.csv",
+  "salesforce_object": "Claim__c",
+  "version": "1.0",
+  "created_date": "2026-01-06T14:12:27.247419",
+  "modified_date": "2026-01-06T14:12:27.247465",
+  "source_file_signature": {
+    "expected_columns": [
+      "Checkbox_2__c",
+      "Checkbox__c",
+      "Converted_to_Patient_Event__c",
+      "Converted_to_Patient_Feedback__c",
+      "DS_Bypass_Void__c",
+      "Date_of_Loss__c",
+      "EPA_Reportable__c",
+      "Gift_Card__c",
+      "Load_Import_Record__c",
+      "RTW_Status_Requested__c",
+      "Self_Administered__c",
+      "Share_Claim_with_Claimant__c",
+      "Status_Requested__c",
+      "Termination_File_Sent__c"
+    ],
+    "validation_mode": "warn_on_mismatch"
+  },
+  "mappings": [
+    {
+      "source_column": "Checkbox_2__c",
+      "target_field": "Checkbox_2__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Checkbox__c",
+      "target_field": "Checkbox__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Converted_to_Patient_Event__c",
+      "target_field": "Converted_to_Patient_Event__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Converted_to_Patient_Feedback__c",
+      "target_field": "Converted_to_Patient_Feedback__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "DS_Bypass_Void__c",
+      "target_field": "DS_Bypass_Void__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Date_of_Loss__c",
+      "target_field": "Date_of_Loss__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "EPA_Reportable__c",
+      "target_field": "EPA_Reportable__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Gift_Card__c",
+      "target_field": "Gift_Card__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Load_Import_Record__c",
+      "target_field": "Load_Import_Record__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "RTW_Status_Requested__c",
+      "target_field": "RTW_Status_Requested__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Self_Administered__c",
+      "target_field": "Self_Administered__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Share_Claim_with_Claimant__c",
+      "target_field": "Share_Claim_with_Claimant__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Status_Requested__c",
+      "target_field": "Status_Requested__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    },
+    {
+      "source_column": "Termination_File_Sent__c",
+      "target_field": "Termination_File_Sent__c",
+      "mapping_type": "direct",
+      "transform_expr": null,
+      "is_required": true
+    }
+  ]
+}
