@@ -8,9 +8,9 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+# build/  # Included for machine transfer
 develop-eggs/
-dist/
+# dist/  # Included for machine transfer
 downloads/
 eggs/
 .eggs/
