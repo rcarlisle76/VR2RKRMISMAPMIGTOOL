@@ -65,6 +65,9 @@ class AIEnhancedMappingService(MappingService):
         self._embedder = None
         self._llm_client = None
 
+        # Cache for Salesforce field embeddings (avoids re-encoding per column)
+        self._field_embeddings_cache = {}
+
         logger.info(
             f"AI Mapping Service initialized (semantic: {use_semantic}, llm: {use_llm})"
         )
@@ -262,13 +265,26 @@ class AIEnhancedMappingService(MappingService):
 
         return scores
 
+    def _get_field_embeddings(self, sf_fields: List[SalesforceField]) -> tuple:
+        """Get cached field embeddings, computing if necessary."""
+        # Create cache key from field names
+        cache_key = tuple(f.name for f in sf_fields)
+
+        if cache_key not in self._field_embeddings_cache:
+            field_texts = [f"{f.name} {f.label}" for f in sf_fields]
+            embeddings = self.embedder.encode(field_texts, show_progress_bar=False)
+            self._field_embeddings_cache[cache_key] = embeddings
+            logger.info(f"Cached embeddings for {len(sf_fields)} Salesforce fields")
+
+        return self._field_embeddings_cache[cache_key]
+
     def _semantic_match_column(
         self,
         source_column: str,
         sf_fields: List[SalesforceField],
         threshold: float
     ) -> List[MappingScore]:
-        """Semantic embedding-based matching."""
+        """Semantic embedding-based matching with batch optimization and caching."""
         if not self.embedder:
             return []
 
@@ -277,25 +293,24 @@ class AIEnhancedMappingService(MappingService):
         try:
             from sklearn.metrics.pairwise import cosine_similarity
 
-            # Generate embeddings
-            source_embedding = self.embedder.encode([source_column])[0]
+            # Encode source column (disable progress bar for speed)
+            source_embedding = self.embedder.encode(
+                [source_column],
+                show_progress_bar=False
+            )[0]
 
-            # Compare against each field
-            for sf_field in sf_fields:
-                # Create rich field description for better matching
-                field_text = f"{sf_field.name} {sf_field.label}"
-                target_embedding = self.embedder.encode([field_text])[0]
+            # Get cached target field embeddings (computed only once per object)
+            target_embeddings = self._get_field_embeddings(sf_fields)
 
-                # Calculate cosine similarity
-                similarity = cosine_similarity(
-                    [source_embedding],
-                    [target_embedding]
-                )[0][0]
+            # Vectorized similarity computation (all fields at once)
+            similarities = cosine_similarity([source_embedding], target_embeddings)[0]
 
+            # Filter by threshold and create MappingScore objects
+            for idx, similarity in enumerate(similarities):
                 if similarity >= threshold:
                     scores.append(MappingScore(
                         source_column=source_column,
-                        target_field=sf_field,
+                        target_field=sf_fields[idx],
                         score=float(similarity),
                         method='semantic'
                     ))

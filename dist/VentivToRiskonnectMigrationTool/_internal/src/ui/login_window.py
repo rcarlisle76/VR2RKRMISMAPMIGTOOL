@@ -46,10 +46,12 @@ class LoginWindow(QMainWindow):
         # Title
         title_label = QLabel("Ventiv to Riskonnect Migration Tool")
         title_font = QFont()
-        title_font.setPointSize(16)
+        title_font.setPointSize(14)
         title_font.setBold(True)
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignCenter)
+        title_label.setWordWrap(True)
+        title_label.setMinimumHeight(50)
         layout.addWidget(title_label)
 
         # Subtitle
@@ -129,7 +131,7 @@ class LoginWindow(QMainWindow):
                 border: none;
                 border-radius: 4px;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 16px;
             }
             QPushButton:hover {
                 background-color: #0159a5;
@@ -155,7 +157,7 @@ class LoginWindow(QMainWindow):
         help_label = QLabel('<a href="https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm">How to get your security token?</a>')
         help_label.setOpenExternalLinks(True)
         help_label.setAlignment(Qt.AlignCenter)
-        help_label.setStyleSheet("color: #0176d3; font-size: 11px;")
+        help_label.setStyleSheet("color: #0176d3; font-size: 13px;")
         layout.addWidget(help_label)
 
         # Set layout
@@ -168,18 +170,21 @@ class LoginWindow(QMainWindow):
             }
             QLabel {
                 color: #333;
+                font-size: 11pt;
             }
             QLineEdit {
                 padding: 8px;
                 border: 1px solid #ccc;
                 border-radius: 4px;
                 background-color: white;
+                font-size: 11pt;
             }
             QLineEdit:focus {
                 border: 1px solid #0176d3;
             }
             QCheckBox {
                 color: #333;
+                font-size: 11pt;
             }
         """)
 

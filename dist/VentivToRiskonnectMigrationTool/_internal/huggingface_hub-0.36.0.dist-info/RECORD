@@ -1,6 +1,6 @@
-../../Scripts/hf.exe,sha256=94jYQdjr9sm1KM9azdnvymH3byU2rEdnjPLAWEpwjf8,108369
-../../Scripts/huggingface-cli.exe,sha256=6iu5ffbvulEIVAx_cIKlNvTQKr1NuveoANfB6e5baBk,108387
-../../Scripts/tiny-agents.exe,sha256=T75jvtJs53lGjpEhZ_6b9_AdQ_73UI0vHcuAUMeP0w4,108379
+../../Scripts/hf.exe,sha256=3M8HT9bVchru1PhErX3JqGjTklfukK0KsWrhyileUoY,108405
+../../Scripts/huggingface-cli.exe,sha256=KK-vrLs9Rc8rhWHoghvtOHwH_sxmSyPH2-KQkZaFtJE,108423
+../../Scripts/tiny-agents.exe,sha256=ruFBxt-NZOnaTSXF06RO9_jTYOBS274nonkxRfiofTU,108415
 huggingface_hub-0.36.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 huggingface_hub-0.36.0.dist-info/LICENSE,sha256=xx0jnfkXJvxRnG63LTGOxlggYnIysveWIZ6H3PNdCrQ,11357
 huggingface_hub-0.36.0.dist-info/METADATA,sha256=Js6AVj00AvKTW32IGDW5saZNiX3C-Yb1K_QRRkLeca0,14822

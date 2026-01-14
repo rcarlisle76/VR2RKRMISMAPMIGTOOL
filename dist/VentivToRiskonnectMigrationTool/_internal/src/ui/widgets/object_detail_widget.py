@@ -139,12 +139,34 @@ class ObjectDetailWidget(QWidget):
         # Connect field selection to detail panel
         self.field_table_widget.field_selected.connect(self.field_detail_panel.set_field)
 
-        # Relationships tab
+        # Relationships tab with splitter (table on left, details on right)
+        relationships_tab = QWidget()
+        relationships_layout = QHBoxLayout()
+        relationships_layout.setContentsMargins(0, 0, 0, 0)
+
+        relationships_splitter = QSplitter(Qt.Horizontal)
+
+        # Relationship table
         self.relationship_table_widget = RelationshipTableWidget()
         self.relationship_table_widget.load_page_layouts_requested.connect(
             self._on_load_page_layouts_requested
         )
-        self.tabs.addTab(self.relationship_table_widget, "Relationships")
+        relationships_splitter.addWidget(self.relationship_table_widget)
+
+        # Relationship detail panel (reuse FieldDetailPanel)
+        self.relationship_detail_panel = FieldDetailPanel()
+        relationships_splitter.addWidget(self.relationship_detail_panel)
+
+        # Set splitter sizes (60% table, 40% details)
+        relationships_splitter.setSizes([600, 400])
+
+        relationships_layout.addWidget(relationships_splitter)
+        relationships_tab.setLayout(relationships_layout)
+
+        self.tabs.addTab(relationships_tab, "Relationships")
+
+        # Connect relationship field selection to detail panel
+        self.relationship_table_widget.field_selected.connect(self.relationship_detail_panel.set_field)
 
         # Preview tab
         self.data_preview_widget = DataPreviewWidget()
@@ -233,6 +255,7 @@ class ObjectDetailWidget(QWidget):
         self.field_table_widget.clear()
         self.relationship_table_widget.clear()
         self.field_detail_panel.clear()
+        self.relationship_detail_panel.clear()
         self.data_preview_widget.clear()
         self.mapping_widget.clear()
         self.log_viewer_widget.clear()

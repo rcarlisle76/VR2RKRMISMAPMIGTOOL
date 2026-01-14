@@ -22,10 +22,26 @@ jaraco_datas = collect_data_files('jaraco')
 
 # Collect all submodules that might be loaded dynamically
 hidden_imports = [
+    # Critical Python built-in modules (C extensions)
+    '_socket',
+    '_ssl',
+    '_hashlib',
+    '_bz2',
+    '_lzma',
+    'select',
+
+    # Multiprocessing support
+    'multiprocessing',
+    'multiprocessing.pool',
+    'multiprocessing.managers',
+
+    # Keyring backends
     'keyring.backends',
     'keyring.backends.Windows',
     'keyring.backends.macOS',
     'keyring.backends.SecretService',
+
+    # AI/ML libraries
     'sentence_transformers',
     'sentence_transformers.models',
     'sentence_transformers.util',
@@ -33,14 +49,19 @@ hidden_imports = [
     'transformers',
     'sklearn',
     'sklearn.metrics.pairwise',
-]
 
-# Additional hidden imports for PyQt5
-hidden_imports.extend([
+    # PyQt5 modules
     'PyQt5.QtCore',
     'PyQt5.QtGui',
     'PyQt5.QtWidgets',
-])
+    'PyQt5.QtNetwork',
+
+    # Salesforce/networking
+    'requests',
+    'urllib3',
+    'certifi',
+    'charset_normalizer',
+]
 
 a = Analysis(
     ['launcher.py'],
@@ -78,12 +99,12 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,  # Set to True if you want console window for debugging
+    console=False,  # Production build - no console window
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Add icon path here if you have one
+    icon='icon.ico',
 )
 
 coll = COLLECT(

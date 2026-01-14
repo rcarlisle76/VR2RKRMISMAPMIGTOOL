@@ -30,6 +30,9 @@ class RelationshipTableWidget(QWidget):
     # Signal when layout is clicked - emits (record_type_id, layout_id)
     layout_clicked = pyqtSignal(str, str)
 
+    # Signal when a relationship field is selected - emits SalesforceField
+    field_selected = pyqtSignal(object)
+
     def __init__(self):
         """Initialize the relationship table widget."""
         super().__init__()
@@ -111,6 +114,9 @@ class RelationshipTableWidget(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
+
+        # Connect selection signal
+        self.table.itemSelectionChanged.connect(self._on_field_selection_changed)
 
         # Set column widths
         header = self.table.horizontalHeader()
@@ -370,6 +376,15 @@ class RelationshipTableWidget(QWidget):
         font = self.font()
         font.setBold(True)
         return font
+
+    def _on_field_selection_changed(self):
+        """Handle relationship field selection change."""
+        selected_rows = self.table.selectionModel().selectedRows()
+        if selected_rows and self.relationships:
+            row = selected_rows[0].row()
+            if 0 <= row < len(self.relationships):
+                selected_field = self.relationships[row]
+                self.field_selected.emit(selected_field)
 
     def _on_layout_row_clicked(self, item: QTableWidgetItem):
         """

@@ -8,7 +8,28 @@ Bootstraps the application:
 - Enters event loop
 """
 
+# CRITICAL: Setup PyTorch DLL path and import torch BEFORE PyQt5
+# This fixes DLL loading issues on Windows with Python 3.14
 import sys
+import os
+
+if sys.platform == 'win32':
+    torch_lib_path = os.path.join(sys.prefix, 'Lib', 'site-packages', 'torch', 'lib')
+    if os.path.exists(torch_lib_path):
+        # Add to PATH environment variable
+        os.environ['PATH'] = torch_lib_path + os.pathsep + os.environ.get('PATH', '')
+        # Add to DLL search path for Python 3.8+
+        if hasattr(os, 'add_dll_directory'):
+            os.add_dll_directory(torch_lib_path)
+
+    # Pre-import torch to load its DLLs BEFORE PyQt5 loads
+    try:
+        import torch
+        _torch_loaded = True
+    except Exception as e:
+        print(f"Warning: Could not pre-load PyTorch: {e}")
+        _torch_loaded = False
+
 from pathlib import Path
 
 from PyQt5.QtWidgets import QApplication
