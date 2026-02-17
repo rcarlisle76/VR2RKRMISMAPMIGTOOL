@@ -14,6 +14,24 @@ from typing import List, Dict, Optional
 
 from ...models.salesforce_metadata import SalesforceObject, SalesforceField
 from ...models.mapping_models import SourceFile, FieldMapping, MappingConfiguration
+from ...models.field_usage_models import TableUsageReport
+
+
+class NumericTableWidgetItem(QTableWidgetItem):
+    """Table widget item that sorts numerically based on UserRole data."""
+
+    def __lt__(self, other):
+        """Compare items numerically for sorting."""
+        self_data = self.data(Qt.UserRole)
+        other_data = other.data(Qt.UserRole) if other else None
+
+        # Handle None values
+        if self_data is None:
+            self_data = -1
+        if other_data is None:
+            other_data = -1
+
+        return self_data < other_data
 
 
 class MappingTableWidget(QWidget):
@@ -34,6 +52,7 @@ class MappingTableWidget(QWidget):
         super().__init__()
         self.source_file: Optional[SourceFile] = None
         self.salesforce_object: Optional[SalesforceObject] = None
+        self.usage_data: Optional[TableUsageReport] = None
         self.mappings: Dict[str, str] = {}  # source_column -> target_field
         self.confidence_scores: Dict[str, float] = {}  # source_column -> confidence
         self.mapping_methods: Dict[str, str] = {}  # source_column -> method
@@ -156,9 +175,10 @@ class MappingTableWidget(QWidget):
 
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
             "Source Column",
+            "Null %",
             "→",
             "Salesforce Field",
             "Confidence",
@@ -170,15 +190,17 @@ class MappingTableWidget(QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
+        self.table.setSortingEnabled(True)
 
         # Set column widths
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)  # Source Column
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Arrow
-        header.setSectionResizeMode(2, QHeaderView.Stretch)  # Salesforce Field
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Confidence
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Method
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Status
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Null %
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Arrow
+        header.setSectionResizeMode(3, QHeaderView.Stretch)  # Salesforce Field
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Confidence
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Method
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # Status
 
         # Apply styling
         self.table.setStyleSheet("""
@@ -202,16 +224,19 @@ class MappingTableWidget(QWidget):
 
         self.setLayout(layout)
 
-    def set_data(self, source_file: SourceFile, salesforce_object: SalesforceObject):
+    def set_data(self, source_file: SourceFile, salesforce_object: SalesforceObject,
+                 usage_data: Optional[TableUsageReport] = None):
         """
         Set source file and target object.
 
         Args:
             source_file: SourceFile with columns
             salesforce_object: Target Salesforce object
+            usage_data: Optional TableUsageReport with field statistics
         """
         self.source_file = source_file
         self.salesforce_object = salesforce_object
+        self.usage_data = usage_data
         self.mappings = {}
         self.confidence_scores = {}
         self.mapping_methods = {}
@@ -276,6 +301,7 @@ class MappingTableWidget(QWidget):
         self.table.setRowCount(0)
         self.source_file = None
         self.salesforce_object = None
+        self.usage_data = None
         self.mappings = {}
         self.confidence_scores = {}
         self.mapping_methods = {}
@@ -291,6 +317,8 @@ class MappingTableWidget(QWidget):
         if not self.source_file or not self.salesforce_object:
             return
 
+        # Disable sorting while populating to prevent issues
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(len(self.source_file.columns))
 
         for row_idx, source_col in enumerate(self.source_file.columns):
@@ -299,11 +327,32 @@ class MappingTableWidget(QWidget):
             source_item.setFlags(source_item.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(row_idx, 0, source_item)
 
+            # Null % - from usage data or source file sample
+            null_pct = None
+            if self.usage_data:
+                usage_stats = self.usage_data.get_field_by_name(source_col.name)
+                if usage_stats and usage_stats.total_records > 0:
+                    null_pct = usage_stats.null_percentage
+            elif source_col.sample_values:
+                null_pct = (source_col.null_count / len(source_col.sample_values)) * 100
+
+            null_item = NumericTableWidgetItem(f"{null_pct:.0f}%" if null_pct is not None else "")
+            null_item.setTextAlignment(Qt.AlignCenter)
+            null_item.setFlags(null_item.flags() & ~Qt.ItemIsEditable)
+            # Store numeric value for proper sorting
+            null_item.setData(Qt.UserRole, null_pct if null_pct is not None else -1)
+            if null_pct is not None:
+                if null_pct > 50:
+                    null_item.setForeground(QColor('#c23934'))  # Red
+                elif null_pct > 20:
+                    null_item.setForeground(QColor('#fe9339'))  # Orange
+            self.table.setItem(row_idx, 1, null_item)
+
             # Arrow
             arrow_item = QTableWidgetItem("→")
             arrow_item.setTextAlignment(Qt.AlignCenter)
             arrow_item.setFlags(arrow_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row_idx, 1, arrow_item)
+            self.table.setItem(row_idx, 2, arrow_item)
 
             # Salesforce field dropdown
             combo = QComboBox()
@@ -323,26 +372,29 @@ class MappingTableWidget(QWidget):
                 lambda idx, col=source_col.name: self._on_mapping_changed(col, idx)
             )
 
-            self.table.setCellWidget(row_idx, 2, combo)
+            self.table.setCellWidget(row_idx, 3, combo)
             self.combo_boxes[source_col.name] = combo
 
             # Confidence percentage
             confidence_item = QTableWidgetItem("")
             confidence_item.setTextAlignment(Qt.AlignCenter)
             confidence_item.setFlags(confidence_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row_idx, 3, confidence_item)
+            self.table.setItem(row_idx, 4, confidence_item)
 
             # Method
             method_item = QTableWidgetItem("")
             method_item.setTextAlignment(Qt.AlignCenter)
             method_item.setFlags(method_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row_idx, 4, method_item)
+            self.table.setItem(row_idx, 5, method_item)
 
             # Status icon
             status_item = QTableWidgetItem("")
             status_item.setTextAlignment(Qt.AlignCenter)
             status_item.setFlags(status_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row_idx, 5, status_item)
+            self.table.setItem(row_idx, 6, status_item)
+
+        # Re-enable sorting after populating
+        self.table.setSortingEnabled(True)
 
     def _apply_mapping(self, source_column: str, target_field: str):
         """
@@ -365,8 +417,8 @@ class MappingTableWidget(QWidget):
 
         # Update confidence display if available
         row = list(self.combo_boxes.keys()).index(source_column)
-        confidence_item = self.table.item(row, 3)
-        method_item = self.table.item(row, 4)
+        confidence_item = self.table.item(row, 4)
+        method_item = self.table.item(row, 5)
 
         if source_column in self.confidence_scores:
             confidence = self.confidence_scores[source_column]
@@ -424,7 +476,7 @@ class MappingTableWidget(QWidget):
 
         # Update status icon
         row = list(self.combo_boxes.keys()).index(source_column)
-        status_item = self.table.item(row, 5)
+        status_item = self.table.item(row, 6)
 
         if target_field:
             status_item.setText("✓")
@@ -432,11 +484,11 @@ class MappingTableWidget(QWidget):
         else:
             status_item.setText("")
             # Also clear confidence and method when unmapped
-            confidence_item = self.table.item(row, 3)
+            confidence_item = self.table.item(row, 4)
             confidence_item.setText("")
             self.confidence_scores.pop(source_column, None)
 
-            method_item = self.table.item(row, 4)
+            method_item = self.table.item(row, 5)
             method_item.setText("")
             self.mapping_methods.pop(source_column, None)
 

@@ -3,6 +3,9 @@ simple-salesforce==1.12.5
 keyring==24.3.0
 requests==2.31.0
 
+# Field usage report parsing
+beautifulsoup4>=4.12.0
+
 # AI-enhanced mapping (Phase 1: Local embeddings)
 sentence-transformers>=2.2.0
 scikit-learn>=1.3.0

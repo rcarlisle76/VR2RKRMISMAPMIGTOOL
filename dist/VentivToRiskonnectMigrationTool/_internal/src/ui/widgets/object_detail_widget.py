@@ -11,12 +11,14 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 
 from ...models.salesforce_metadata import SalesforceObject
+from ...models.field_usage_models import FieldUsageReport
 from .field_table_widget import FieldTableWidget
 from .field_detail_panel import FieldDetailPanel
 from .data_preview_widget import DataPreviewWidget
 from .mapping_widget import MappingWidget
 from .relationship_table_widget import RelationshipTableWidget
 from .log_viewer_widget import LogViewerWidget
+from .field_usage_widget import FieldUsageWidget
 
 
 class ObjectDetailWidget(QWidget):
@@ -38,6 +40,7 @@ class ObjectDetailWidget(QWidget):
     load_mapping_requested = pyqtSignal()  # Request load mapping
     load_data_requested = pyqtSignal()  # Request data loading to Salesforce
     load_page_layouts_requested = pyqtSignal(str)  # Request page layout info for object
+    import_usage_report_requested = pyqtSignal()  # Request to import field usage report
 
     def __init__(self):
         """Initialize the object detail widget."""
@@ -188,6 +191,11 @@ class ObjectDetailWidget(QWidget):
         self.log_viewer_widget = LogViewerWidget()
         self.tabs.addTab(self.log_viewer_widget, "Logs")
 
+        # Field Usage tab
+        self.field_usage_widget = FieldUsageWidget()
+        self.field_usage_widget.import_report_requested.connect(self._on_import_usage_report_requested)
+        self.tabs.addTab(self.field_usage_widget, "Field Usage")
+
         layout.addWidget(self.tabs)
 
         self.setLayout(layout)
@@ -259,6 +267,8 @@ class ObjectDetailWidget(QWidget):
         self.data_preview_widget.clear()
         self.mapping_widget.clear()
         self.log_viewer_widget.clear()
+        # Note: field_usage_widget is not cleared when switching objects
+        # as the report is independent of the selected Salesforce object
         self.hide()
 
     def show_loading(self):
@@ -306,3 +316,16 @@ class ObjectDetailWidget(QWidget):
     def _on_load_page_layouts_requested(self, object_name: str):
         """Handle page layouts request."""
         self.load_page_layouts_requested.emit(object_name)
+
+    def _on_import_usage_report_requested(self):
+        """Handle import usage report request."""
+        self.import_usage_report_requested.emit()
+
+    def set_field_usage_report(self, report: FieldUsageReport):
+        """
+        Set the field usage report to display.
+
+        Args:
+            report: FieldUsageReport to display
+        """
+        self.field_usage_widget.set_report(report)

@@ -13,6 +13,7 @@ from PyQt5.QtGui import QColor
 from typing import Optional
 
 from ...models.mapping_models import SourceFile
+from ...models.field_usage_models import TableUsageReport
 
 
 class SourceFilePanel(QWidget):
@@ -28,6 +29,7 @@ class SourceFilePanel(QWidget):
         """Initialize the source file panel."""
         super().__init__()
         self.current_file: Optional[SourceFile] = None
+        self.current_usage_data: Optional[TableUsageReport] = None
         self.init_ui()
 
     def init_ui(self):
@@ -101,6 +103,11 @@ class SourceFilePanel(QWidget):
         self.file_stats_label.setStyleSheet("color: #333; font-weight: bold;")
         file_info_layout.addWidget(self.file_stats_label)
 
+        self.usage_match_label = QLabel("")
+        self.usage_match_label.setStyleSheet("color: #2e844a; font-style: italic;")
+        self.usage_match_label.hide()  # Hidden until usage data is matched
+        file_info_layout.addWidget(self.usage_match_label)
+
         self.file_info_group.setLayout(file_info_layout)
         self.file_info_group.setStyleSheet("""
             QGroupBox {
@@ -124,11 +131,13 @@ class SourceFilePanel(QWidget):
 
         # Columns table
         self.table = QTableWidget()
-        self.table.setColumnCount(4)
+        self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
             "Column Name",
             "Type",
             "Null %",
+            "Count",
+            "Distinct",
             "Sample Values"
         ])
 
@@ -143,7 +152,13 @@ class SourceFilePanel(QWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Column Name
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Type
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Null %
-        header.setSectionResizeMode(3, QHeaderView.Stretch)  # Sample Values
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Count
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Distinct
+        header.setSectionResizeMode(5, QHeaderView.Stretch)  # Sample Values
+
+        # Initially hide usage columns (shown when usage data is available)
+        self.table.setColumnHidden(3, True)  # Count
+        self.table.setColumnHidden(4, True)  # Distinct
 
         # Apply styling
         self.table.setStyleSheet("""
@@ -167,20 +182,35 @@ class SourceFilePanel(QWidget):
 
         self.setLayout(layout)
 
-    def set_file(self, source_file: SourceFile):
+    def set_file(self, source_file: SourceFile, usage_data: Optional[TableUsageReport] = None):
         """
         Display source file information.
 
         Args:
             source_file: SourceFile to display
+            usage_data: Optional TableUsageReport with field statistics
         """
         self.current_file = source_file
+        self.current_usage_data = usage_data
 
         # Update file info
         self.file_path_label.setText(f"Path: {source_file.file_path}")
         self.file_stats_label.setText(
             f"{source_file.total_rows:,} rows • {len(source_file.columns)} columns"
         )
+
+        # Update usage match label
+        if usage_data:
+            self.usage_match_label.setText(f"Usage Report: {usage_data.display_name}")
+            self.usage_match_label.show()
+            # Show usage columns
+            self.table.setColumnHidden(3, False)  # Count
+            self.table.setColumnHidden(4, False)  # Distinct
+        else:
+            self.usage_match_label.hide()
+            # Hide usage columns
+            self.table.setColumnHidden(3, True)  # Count
+            self.table.setColumnHidden(4, True)  # Distinct
 
         # Update columns label
         self.columns_label.setText(f"Columns ({len(source_file.columns)})")
@@ -190,6 +220,11 @@ class SourceFilePanel(QWidget):
 
         for row_idx, column in enumerate(source_file.columns):
             self.table.insertRow(row_idx)
+
+            # Get usage stats for this column if available
+            usage_stats = None
+            if usage_data:
+                usage_stats = usage_data.get_field_by_name(column.name)
 
             # Column name
             name_item = QTableWidgetItem(column.name)
@@ -207,8 +242,17 @@ class SourceFilePanel(QWidget):
                 type_item.setForeground(QColor('#c23934'))
             self.table.setItem(row_idx, 1, type_item)
 
-            # Null percentage
-            if column.sample_values:
+            # Null percentage - prefer usage data if available
+            if usage_stats and usage_stats.total_records > 0:
+                null_pct = usage_stats.null_percentage
+                null_item = QTableWidgetItem(f"{null_pct:.1f}%")
+                if null_pct > 50:
+                    null_item.setForeground(QColor('#c23934'))
+                    null_item.setBackground(QColor('#ffd0d0'))
+                elif null_pct > 20:
+                    null_item.setForeground(QColor('#fe9339'))
+                self.table.setItem(row_idx, 2, null_item)
+            elif column.sample_values:
                 null_pct = (column.null_count / len(column.sample_values)) * 100
                 null_item = QTableWidgetItem(f"{null_pct:.0f}%")
                 if null_pct > 50:
@@ -217,21 +261,38 @@ class SourceFilePanel(QWidget):
                     null_item.setForeground(QColor('#fe9339'))
                 self.table.setItem(row_idx, 2, null_item)
 
+            # Count (from usage data)
+            if usage_stats:
+                count_item = QTableWidgetItem(f"{usage_stats.count:,}")
+                count_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.table.setItem(row_idx, 3, count_item)
+
+            # Distinct (from usage data)
+            if usage_stats:
+                distinct_item = QTableWidgetItem(f"{usage_stats.distinct:,}")
+                distinct_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.table.setItem(row_idx, 4, distinct_item)
+
             # Sample values (first 3)
             sample_display = ', '.join(str(v) for v in column.sample_values[:3] if v)
             if len(sample_display) > 50:
                 sample_display = sample_display[:47] + "..."
             sample_item = QTableWidgetItem(sample_display)
             sample_item.setToolTip(sample_display)  # Full text on hover
-            self.table.setItem(row_idx, 3, sample_item)
+            self.table.setItem(row_idx, 5, sample_item)
 
     def clear(self):
         """Clear the panel."""
         self.current_file = None
+        self.current_usage_data = None
         self.file_path_label.setText("No file imported")
         self.file_stats_label.setText("")
+        self.usage_match_label.hide()
         self.columns_label.setText("Columns (0)")
         self.table.setRowCount(0)
+        # Hide usage columns
+        self.table.setColumnHidden(3, True)  # Count
+        self.table.setColumnHidden(4, True)  # Distinct
 
     def enable_template_download(self, enabled: bool):
         """

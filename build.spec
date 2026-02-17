@@ -20,6 +20,10 @@ transformers_datas = collect_data_files('transformers')
 setuptools_datas = collect_data_files('setuptools')
 jaraco_datas = collect_data_files('jaraco')
 
+# Collect bs4 (BeautifulSoup) submodules
+bs4_hiddenimports = collect_submodules('bs4')
+soupsieve_hiddenimports = collect_submodules('soupsieve')
+
 # Collect all submodules that might be loaded dynamically
 hidden_imports = [
     # Critical Python built-in modules (C extensions)
@@ -61,7 +65,11 @@ hidden_imports = [
     'urllib3',
     'certifi',
     'charset_normalizer',
-]
+
+    # HTML parsing
+    'bs4',
+    'soupsieve',
+] + bs4_hiddenimports + soupsieve_hiddenimports
 
 a = Analysis(
     ['launcher.py'],

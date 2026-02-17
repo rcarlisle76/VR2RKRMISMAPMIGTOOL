@@ -9,7 +9,10 @@
       "Bash(timeout 5 ping:*)",
       "Bash(\"dist\\\\VentivToRiskonnectMigrationTool\\\\VentivToRiskonnectMigrationTool.exe\")",
       "Bash(timeout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(py -3.11 -m PyInstaller:*)"
     ]
   }
 }

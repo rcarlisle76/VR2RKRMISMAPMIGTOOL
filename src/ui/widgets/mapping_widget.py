@@ -13,6 +13,7 @@ from typing import Optional, List
 
 from ...models.salesforce_metadata import SalesforceObject
 from ...models.mapping_models import SourceFile, FieldMapping
+from ...models.field_usage_models import TableUsageReport
 from .source_file_panel import SourceFilePanel
 from .mapping_table_widget import MappingTableWidget
 
@@ -35,6 +36,7 @@ class MappingWidget(QWidget):
         super().__init__()
         self.current_object: Optional[SalesforceObject] = None
         self.source_file: Optional[SourceFile] = None
+        self.current_usage_data: Optional[TableUsageReport] = None
         self.init_ui()
 
     def init_ui(self):
@@ -79,19 +81,21 @@ class MappingWidget(QWidget):
         # Enable template download button when object is selected
         self.source_file_panel.enable_template_download(salesforce_object is not None)
 
-    def set_source_file(self, source_file: SourceFile):
+    def set_source_file(self, source_file: SourceFile, usage_data: Optional[TableUsageReport] = None):
         """
         Set the source file.
 
         Args:
             source_file: SourceFile with column information
+            usage_data: Optional TableUsageReport with field statistics
         """
         self.source_file = source_file
-        self.source_file_panel.set_file(source_file)
+        self.current_usage_data = usage_data
+        self.source_file_panel.set_file(source_file, usage_data)
 
         # If we have both source file and object, populate mapping table
         if self.current_object:
-            self.mapping_table.set_data(source_file, self.current_object)
+            self.mapping_table.set_data(source_file, self.current_object, usage_data)
 
     def set_mappings(self, mappings: List[FieldMapping]):
         """
@@ -115,6 +119,7 @@ class MappingWidget(QWidget):
         """Clear the mapping widget."""
         self.current_object = None
         self.source_file = None
+        self.current_usage_data = None
         self.source_file_panel.clear()
         self.source_file_panel.enable_template_download(False)
         self.mapping_table.clear()

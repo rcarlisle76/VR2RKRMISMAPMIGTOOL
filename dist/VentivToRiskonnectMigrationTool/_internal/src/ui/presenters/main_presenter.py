@@ -17,8 +17,10 @@ from ...services.ai_mapping_service import AIEnhancedMappingService
 from ...services.data_loader_service import DataLoaderService, LoadResult
 from ...services.template_service import TemplateService
 from ...services.auth_service import AuthService
+from ...services.field_usage_service import FieldUsageService
 from ...models.salesforce_metadata import ObjectListItem, SalesforceObject
 from ...models.mapping_models import SourceFile, FieldMapping
+from ...models.field_usage_models import FieldUsageReport
 
 
 logger = get_logger(__name__)
@@ -302,6 +304,36 @@ class DataLoadWorker(QThread):
             self.error.emit(str(e))
 
 
+class FieldUsageImportWorker(QThread):
+    """Worker thread for importing field usage report in background."""
+
+    finished = pyqtSignal(object)  # FieldUsageReport
+    error = pyqtSignal(str)
+
+    def __init__(self, field_usage_service: FieldUsageService, file_path: str):
+        """
+        Initialize worker.
+
+        Args:
+            field_usage_service: FieldUsageService instance
+            file_path: Path to HTML report file
+        """
+        super().__init__()
+        self.field_usage_service = field_usage_service
+        self.file_path = file_path
+
+    def run(self):
+        """Import usage report in background thread."""
+        try:
+            logger.debug(f"Importing field usage report: {self.file_path}")
+            report = self.field_usage_service.import_report(self.file_path)
+            self.finished.emit(report)
+
+        except Exception as e:
+            logger.error(f"Error importing field usage report: {e}")
+            self.error.emit(str(e))
+
+
 class MainPresenter(QObject):
     """
     Presenter for main window.
@@ -352,11 +384,13 @@ class MainPresenter(QObject):
 
         self.data_loader_service = DataLoaderService(auth_service.get_client())
         self.template_service = TemplateService()
+        self.field_usage_service = FieldUsageService()
         self.worker: Optional[MetadataLoadWorker] = None
         self.describe_worker: Optional[ObjectDescribeWorker] = None
         self.preview_worker: Optional[DataPreviewWorker] = None
         self.import_worker: Optional[FileImportWorker] = None
         self.load_worker: Optional[DataLoadWorker] = None
+        self.usage_import_worker: Optional[FieldUsageImportWorker] = None
 
         # Connect view signals
         self.view.object_selected.connect(self._handle_object_selected)
@@ -372,6 +406,7 @@ class MainPresenter(QObject):
         self.view.object_detail_widget.load_page_layouts_requested.connect(self._handle_load_page_layouts)
         self.view.object_detail_widget.relationship_table_widget.layout_clicked.connect(self._handle_layout_clicked)
         self.view.object_detail_widget.field_table_widget.download_template_requested.connect(self._handle_filtered_template_download)
+        self.view.object_detail_widget.import_usage_report_requested.connect(self._handle_import_usage_report)
 
         # Load objects on initialization
         self.load_objects()
@@ -875,11 +910,21 @@ class MainPresenter(QObject):
         """
         logger.info(f"File imported: {source_file.total_rows} rows, {len(source_file.columns)} columns")
 
-        # Update view
-        self.view.object_detail_widget.mapping_widget.set_source_file(source_file)
-        self.view.update_status(
-            f"Imported {source_file.total_rows:,} rows from {source_file.file_type.upper()} file"
-        )
+        # Try to match with usage report if one is loaded
+        usage_data = None
+        if self.field_usage_service.current_report:
+            usage_data = self.field_usage_service.get_usage_for_source_file(source_file)
+            if usage_data:
+                logger.info(f"Matched source file to usage table: {usage_data.display_name}")
+
+        # Update view with optional usage data
+        self.view.object_detail_widget.mapping_widget.set_source_file(source_file, usage_data)
+
+        # Update status message
+        status_msg = f"Imported {source_file.total_rows:,} rows from {source_file.file_type.upper()} file"
+        if usage_data:
+            status_msg += f" (matched to: {usage_data.display_name})"
+        self.view.update_status(status_msg)
 
         # Cleanup worker
         if self.import_worker:
@@ -1315,6 +1360,81 @@ class MainPresenter(QObject):
             self.load_worker.deleteLater()
             self.load_worker = None
 
+    def _handle_import_usage_report(self):
+        """Handle import usage report request."""
+        from PyQt5.QtWidgets import QFileDialog
+
+        logger.info("Import usage report requested")
+
+        # Prompt for file location
+        file_path, _ = QFileDialog.getOpenFileName(
+            self.view,
+            "Import Field Usage Report",
+            "",
+            "All Supported Files (*.html *.htm *.csv);;HTML Files (*.html *.htm);;CSV Files (*.csv);;All Files (*.*)"
+        )
+
+        if not file_path:
+            return
+
+        logger.info(f"Importing usage report from: {file_path}")
+
+        # Update status
+        self.view.update_status("Importing field usage report...")
+
+        # Create and start worker thread
+        self.usage_import_worker = FieldUsageImportWorker(self.field_usage_service, file_path)
+        self.usage_import_worker.finished.connect(self._on_usage_report_imported)
+        self.usage_import_worker.error.connect(self._on_usage_report_error)
+        self.usage_import_worker.start()
+
+    def _on_usage_report_imported(self, report: FieldUsageReport):
+        """
+        Handle usage report imported successfully.
+
+        Args:
+            report: FieldUsageReport with parsed data
+        """
+        logger.info(f"Usage report imported: {report.table_count} tables")
+
+        # Update view
+        self.view.object_detail_widget.set_field_usage_report(report)
+        self.view.update_status(f"Imported usage report with {report.table_count} tables")
+
+        # If a source file is already loaded, try to match it
+        mapping_widget = self.view.object_detail_widget.mapping_widget
+        if mapping_widget.source_file:
+            usage_data = self.field_usage_service.get_usage_for_source_file(mapping_widget.source_file)
+            if usage_data:
+                mapping_widget.set_source_file(mapping_widget.source_file, usage_data)
+                logger.info(f"Auto-matched source file to table: {usage_data.display_name}")
+
+        # Cleanup worker
+        if self.usage_import_worker:
+            self.usage_import_worker.deleteLater()
+            self.usage_import_worker = None
+
+    def _on_usage_report_error(self, error_message: str):
+        """
+        Handle error importing usage report.
+
+        Args:
+            error_message: Error message
+        """
+        logger.error(f"Failed to import usage report: {error_message}")
+
+        # Show error
+        self.view.show_error(
+            "Import Error",
+            f"Failed to import field usage report:\n\n{error_message}"
+        )
+        self.view.update_status("Error importing usage report")
+
+        # Cleanup worker
+        if self.usage_import_worker:
+            self.usage_import_worker.deleteLater()
+            self.usage_import_worker = None
+
     def _handle_logout(self):
         """Handle logout request."""
         logger.info("Logout requested")
@@ -1347,6 +1467,10 @@ class MainPresenter(QObject):
         if self.load_worker and self.load_worker.isRunning():
             self.load_worker.terminate()
             self.load_worker.wait()
+
+        if self.usage_import_worker and self.usage_import_worker.isRunning():
+            self.usage_import_worker.terminate()
+            self.usage_import_worker.wait()
 
         if self.auth_service.is_connected():
             self.auth_service.disconnect()
