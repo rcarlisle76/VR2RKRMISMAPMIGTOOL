@@ -268,6 +268,9 @@ class MappingTableWidget(QWidget):
                 self.mapping_methods[mapping.source_column] = mapping.method
             self._apply_mapping(mapping.source_column, mapping.target_field)
 
+        # Highlight any duplicate mappings after Auto-Map
+        self._highlight_duplicate_mappings()
+
     def get_mappings(self) -> List[FieldMapping]:
         """
         Get current mappings.
@@ -495,6 +498,9 @@ class MappingTableWidget(QWidget):
         # Update stats
         self._update_stats()
 
+        # Highlight any duplicate mappings
+        self._highlight_duplicate_mappings()
+
         # Emit signal
         self.mapping_changed.emit(source_column, target_field or "")
 
@@ -524,6 +530,35 @@ class MappingTableWidget(QWidget):
             self.stats_label.setStyleSheet("color: #fe9339; font-size: 11px; font-weight: bold;")
         else:
             self.stats_label.setStyleSheet("color: #c23934; font-size: 11px; font-weight: bold;")
+
+    def _highlight_duplicate_mappings(self):
+        """Highlight rows in red where multiple source columns map to the same destination field."""
+        # Count target fields
+        target_counts = {}
+        for source, target in self.mappings.items():
+            if target:  # Only count actual mappings, not empty
+                target_counts[target] = target_counts.get(target, 0) + 1
+
+        # Find duplicate targets (mapped more than once)
+        duplicate_targets = {target for target, count in target_counts.items() if count > 1}
+
+        # Light red for duplicates, white for normal
+        duplicate_bg = QColor('#ffcccc')
+        normal_bg = QColor('#ffffff')
+
+        # Apply/remove highlighting for each row
+        source_columns = list(self.combo_boxes.keys())
+        for row_idx, source_col in enumerate(source_columns):
+            target = self.mappings.get(source_col)
+            is_duplicate = target in duplicate_targets
+
+            bg_color = duplicate_bg if is_duplicate else normal_bg
+
+            # Apply to all columns in the row (except combo box column)
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row_idx, col)
+                if item:
+                    item.setBackground(bg_color)
 
     def _on_auto_map_clicked(self):
         """Handle auto-map button click."""

@@ -13,6 +13,7 @@ from PyQt5.QtGui import QFont
 
 from .widgets.object_list_widget import ObjectListWidget
 from .widgets.object_detail_widget import ObjectDetailWidget
+from .. import __version__
 
 
 class MainWindow(QMainWindow):
@@ -39,7 +40,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize the user interface."""
-        self.setWindowTitle("Ventiv to Riskonnect Migration Tool")
+        self.setWindowTitle(f"Ventiv to Riskonnect Migration Tool v{__version__}")
         self.setGeometry(100, 100, 1200, 700)
 
         # Central widget
