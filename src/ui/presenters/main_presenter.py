@@ -365,6 +365,9 @@ class MainPresenter(QObject):
         self.config_manager = ConfigManager()
         config = self.config_manager.load()
 
+        # Pass config_manager to view for Settings dialog
+        self.view.config_manager = self.config_manager
+
         # Use AI-enhanced mapping service if enabled, otherwise fallback to basic
         if config.use_semantic_matching or config.use_llm_mapping:
             logger.info(
@@ -376,7 +379,8 @@ class MainPresenter(QObject):
                 use_llm=config.use_llm_mapping,
                 llm_provider=config.llm_provider,
                 llm_model=config.llm_model,
-                api_key=config.claude_api_key
+                api_key=config.claude_api_key,
+                custom_prompt=config.llm_prompt
             )
         else:
             logger.info("Using standard fuzzy matching service")

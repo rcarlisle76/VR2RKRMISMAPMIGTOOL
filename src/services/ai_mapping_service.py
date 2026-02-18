@@ -42,7 +42,8 @@ class AIEnhancedMappingService(MappingService):
         use_llm: bool = False,
         llm_provider: str = "claude",
         llm_model: str = "claude-3-5-sonnet-20241022",
-        api_key: str = ""
+        api_key: str = "",
+        custom_prompt: str = ""
     ):
         """
         Initialize AI-enhanced mapping service.
@@ -53,6 +54,7 @@ class AIEnhancedMappingService(MappingService):
             llm_provider: LLM provider ('claude' or 'openai')
             llm_model: Model name to use
             api_key: API key for LLM provider
+            custom_prompt: Custom LLM prompt (empty = use default)
         """
         super().__init__()
         self.use_semantic = use_semantic
@@ -60,6 +62,7 @@ class AIEnhancedMappingService(MappingService):
         self.llm_provider = llm_provider
         self.llm_model = llm_model
         self.api_key = api_key
+        self.custom_prompt = custom_prompt
 
         # Lazy-load models to avoid startup delay
         self._embedder = None
@@ -367,6 +370,14 @@ class AIEnhancedMappingService(MappingService):
             f"- {f.name} ({f.label}) - {f.type}, required: {f.required}"
             for f in salesforce_object.fields[:100]  # Limit to avoid token limits
         ])
+
+        # Use custom prompt if provided, otherwise use default
+        if self.custom_prompt:
+            return self.custom_prompt.format(
+                csv_columns=csv_columns,
+                sf_fields=sf_fields,
+                object_label=salesforce_object.label
+            )
 
         return f"""Map CSV columns to Salesforce fields.
 

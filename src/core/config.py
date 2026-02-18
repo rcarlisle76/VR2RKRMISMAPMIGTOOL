@@ -43,6 +43,9 @@ class AppConfig:
     ai_mapping_threshold: float = 0.6  # Minimum confidence for AI suggestions
     fuzzy_mapping_threshold: float = 0.7  # Higher threshold when AI is enabled
 
+    # Custom LLM prompt (empty = use default)
+    llm_prompt: str = ""
+
 
 class ConfigManager:
     """Manages application configuration."""

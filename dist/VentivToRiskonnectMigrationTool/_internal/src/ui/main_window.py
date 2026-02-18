@@ -114,6 +114,13 @@ class MainWindow(QMainWindow):
         refresh_action.triggered.connect(self._on_refresh_clicked)
         tools_menu.addAction(refresh_action)
 
+        tools_menu.addSeparator()
+
+        settings_action = QAction("Settings...", self)
+        settings_action.setShortcut("Ctrl+,")
+        settings_action.triggered.connect(self._on_settings_clicked)
+        tools_menu.addAction(settings_action)
+
         # Help menu
         help_menu = menubar.addMenu("Help")
 
@@ -135,14 +142,22 @@ class MainWindow(QMainWindow):
         self.update_status("Refreshing objects...")
         # Presenter will handle actual refresh
 
+    def _on_settings_clicked(self):
+        """Handle settings menu click."""
+        from .dialogs.settings_dialog import SettingsDialog
+        if hasattr(self, 'config_manager') and self.config_manager:
+            dialog = SettingsDialog(self.config_manager, self)
+            dialog.exec_()
+
     def _on_about_clicked(self):
         """Handle about menu click."""
         from PyQt5.QtWidgets import QMessageBox
+        from .. import __version__
         QMessageBox.information(
             self,
             "About",
-            "Salesforce Migration Tool\n\n"
-            "Version: 1.0 (Phase 2)\n\n"
+            f"Ventiv to Riskonnect Migration Tool\n\n"
+            f"Version: {__version__}\n\n"
             "A professional data migration tool for Salesforce.\n\n"
             "© 2025"
         )
